@@ -70,7 +70,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> Word count:</span>
-            <span class="post-count">1.9k</span>
+            <span class="post-count">2.4k</span>
         </span>
     </span>
 
@@ -79,7 +79,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-book-open-line"></i>
             <span class="post-meta-item-text"> Reading time≈</span>
-            <span class="post-count">7 min</span>
+            <span class="post-count">9 min</span>
         </span>
     </span>
 </div>
@@ -94,10 +94,56 @@
   
     <div class="article-entry" itemprop="articleBody">
        
-  <h2 id="什么是花指令"><a href="#什么是花指令" class="headerlink" title="什么是花指令"></a>什么是花指令</h2><p>反汇编过程中存在几个关键问题，其中之一是数据与代码的区分问题。反汇编算法必须对汇编指令长度，多种多样的间接跳转实现形式进行适当处理，从而保证反汇编结果的正确性。机器的一般格式为：指令＋数据。而反汇编的大致过程是：首先会确定指令開始的首地址，然后依据这个指令字推断是哪个汇编语句，然后再将后面的数据反汇编出来。由此，我们能够看到，在这一步的反汇编过程中存在漏洞：如果有人有益将错误的机器指令放在了错误的位置，那反汇编时，就有可能连同后面的数据一起错误地反汇编出来，这样，我们看到的就可能是一个错误的反汇编代码。<br>巧妙构造代码和数据，在指令流中插入很多“数据垃圾”，干扰反汇编软件的判断，使其错误地确定指令的起始位置，让破解者无法清楚正确地反汇编程序的内容，迷失方向。经典的是，目标位置是另一条指令的中间，这样在反汇编的时候便会出现混乱。这就是“花指令”，简而言之，花指令是利用了反汇编时单纯依据机器指令字来决定反汇编结果的漏洞。<br>以下为一段汇编源程序。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587540410610-2bfd5a61-01e8-47e3-a2b6-8acaa15ad2b9.svg#align=left&display=inline&height=780&margin=%5Bobject%20Object%5D&name=carbon.svg&originHeight=780&originWidth=770&size=873029&status=done&style=none&width=770" alt="carbon.svg"><br>对源程序进行编译，然后用W32Dasm进行反汇编，结果如下。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587540787354-e247d29c-13ea-468f-8c6c-70b7119d641c.svg#align=left&display=inline&height=632&margin=%5Bobject%20Object%5D&name=carbon%20%281%29.svg&originHeight=632&originWidth=1188&size=706005&status=done&style=none&width=1188" alt="carbon (1).svg"><br>Linear Sweep式反汇编软件是逐行反汇编的，代码中的垃圾数据“0E8h”干扰了其工作，因此错误地确定了指令的起始位置，导致反汇编的一些跳转指令所跳转的位置无效。就像这里的地址00401009h不再是一条指令的起始地址，而是在指令的内部。所以，如果在反汇编一个程序时发现这样的特征，就可以断定该程序中使用了花指令。<br>OD在打开文件时使用线性扫描算法，在分析代码功能（“Ctrl+A”组合键）时使用递归行进算法。用OD代开实例并进行分析，生成的反汇编代码完全正确，“0E8h”字节没有被反汇编，也就是说，此类花指令无法迷惑OD，代码如下：<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542119661-a3dcd653-bf3c-44d6-8f9d-ea691ce60262.svg#align=left&display=inline&height=706&margin=%5Bobject%20Object%5D&name=carbon%20%283%29.svg&originHeight=706&originWidth=1160&size=879966&status=done&style=none&width=1160" alt="carbon (3).svg"><br>在递归行进算法中，一个十分重要的假设是：对任意一条控制转移指令，都能确定其后继（即转移）的目的地址。想要迷惑这类反汇编工具，只要让其难以确定跳转的目的地址即可。<br>创建一个指向性无效数据的跳转指令的代码，具体如下。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542632626-28a9abfc-1926-41bc-9254-db2263dad492.svg#align=left&display=inline&height=816&margin=%5Bobject%20Object%5D&name=carbon%20%285%29.svg&originHeight=816&originWidth=980&size=763842&status=done&style=none&width=980" alt="carbon (5).svg"><br>使用OD打开编译好的实例，这次汇编代码的识别出错了。OD认为垃圾数据“0E8h”所在的地址00401008h是有效的，故将其作为指令的起始地址，导致后面的指令识别出现了错误，具体如下。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542349257-a7f7fe66-ed49-4c58-aa5a-25adf659f37c.svg#align=left&display=inline&height=632&margin=%5Bobject%20Object%5D&name=carbon%20%284%29.svg&originHeight=632&originWidth=1328&size=788319&status=done&style=none&width=1328" alt="carbon (4).svg"><br>“无用的字节”干扰了反汇编工具对指令的起始位置的判断，从而导致反汇编的结果错误。如果能让反汇编工具正确地识别指令的起始地址，就能达到去除花指令的目的。例如，可以把那些无用的字节都替换成单字节指令。最常见的一种替换方法是把无用字节替换成nop指令，即十六进制数90h，示例如下。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587543348682-c29b7bf2-df93-40b8-a7ef-c80768552a9c.svg#align=left&display=inline&height=706&margin=%5Bobject%20Object%5D&name=carbon%20%286%29.svg&originHeight=706&originWidth=1144&size=884727&status=done&style=none&width=1144" alt="carbon (6).svg"><br>OD的一个花指令去除插件就是利用这个原理来去除花指令的。它根据收集的花指令特征码，将垃圾数据替换为nop指令，从而使反汇编工具正常工作。</p>
-<h2 id="一些简单花指令的解析"><a href="#一些简单花指令的解析" class="headerlink" title="一些简单花指令的解析"></a>一些简单花指令的解析</h2><h3 id="第一种花指令："><a href="#第一种花指令：" class="headerlink" title="第一种花指令："></a>第一种花指令：</h3><p>特征：先有一个push 操作，然后jmp到一个Call，Call后面跟一个POP<br><strong>56 EB 27</strong> 2B A6 F1 CC 7E 25 31 96 23 39 7D B0 18 5A 1B D7 5E CB <strong>5E FF E6</strong> 2B A6 F1 CC 7E 25 31 96 23 39 7D B0 18 5A 1B D7 5E CB **E8 E6 FF FF FF 5E **<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543590826-e7feca42-9d2b-43c6-a8e3-cd94a4bbebb0.png#align=left&display=inline&height=381&margin=%5Bobject%20Object%5D&originHeight=381&originWidth=836&size=0&status=done&style=none&width=836"><br>原理：        <br>        push D(寄存器)   1.先push esi(使用一个参数，保留环境,这里也可以push eax-edi等寄存器)<br>        jmp C(偏移)         2.通过EB xx的jmp偏移指令，跳转至精心构造的偏移xx处，也就是Call<br>        call B()                 3.特定E8的Call指令回退调用(Call =&gt; 1.push 下一条指令的地址A        2.jmp 函数地址B)<br>        pop D,jmp D        4.此时pop esi 就把地址A从堆栈中push出来，然后jmp esi就跳转至地址A<br>        pop D                  5.再次pop esi 的目的在于还原环境<br>解决方案：单步跟踪时，只需要F8即可过掉。(想在<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-675251-1-1.html">IDA</a>内看结构，就把它们全部NOP掉就好了)<br>变通点：B C D都可以变换，导致特征码不好定位，暂时没想到好的批处理方法</p>
-<h3 id="第二种花指令："><a href="#第二种花指令：" class="headerlink" title="第二种花指令："></a>第二种花指令：</h3><p>特征：<br>        无效指令：如CLC,CLD,FNOP。<br>        无效跳转：<br>                mov 寄存器,A;<br>                cmp 寄存器,A;<br>                JNZ 迷惑跳转;<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543644917-89291898-66b9-4b40-ae97-75d776c1659f.png#align=left&display=inline&height=396&margin=%5Bobject%20Object%5D&originHeight=396&originWidth=727&size=0&status=done&style=none&width=727"><br>解决方案：这种比较简单，迷惑跳转不用管，直接nop填充即可，调试跟踪的时候也可以当当乐子</p>
-<h3 id="第三种花指令："><a href="#第三种花指令：" class="headerlink" title="第三种花指令："></a>第三种花指令：</h3><p>特征：<br>        push ss<br>        pop ss<br>        待执行指令<br>        有效OPCODE 16 17<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543683615-df2e0ecb-3c52-4950-99dc-d3f5e96d3064.png#align=left&display=inline&height=508&margin=%5Bobject%20Object%5D&originHeight=508&originWidth=1083&size=0&status=done&style=none&width=1083"><br>push ss;向堆栈压入16字节内容</p>
+  <meta name="referrer" content="no-referrer" />
+## 什么是花指令
+反汇编过程中存在几个关键问题，其中之一是数据与代码的区分问题。反汇编算法必须对汇编指令长度，多种多样的间接跳转实现形式进行适当处理，从而保证反汇编结果的正确性。机器的一般格式为：指令＋数据。而反汇编的大致过程是：首先会确定指令開始的首地址，然后依据这个指令字推断是哪个汇编语句，然后再将后面的数据反汇编出来。由此，我们能够看到，在这一步的反汇编过程中存在漏洞：如果有人有益将错误的机器指令放在了错误的位置，那反汇编时，就有可能连同后面的数据一起错误地反汇编出来，这样，我们看到的就可能是一个错误的反汇编代码。
+巧妙构造代码和数据，在指令流中插入很多“数据垃圾”，干扰反汇编软件的判断，使其错误地确定指令的起始位置，让破解者无法清楚正确地反汇编程序的内容，迷失方向。经典的是，目标位置是另一条指令的中间，这样在反汇编的时候便会出现混乱。这就是“花指令”，简而言之，花指令是利用了反汇编时单纯依据机器指令字来决定反汇编结果的漏洞。
+以下为一段汇编源程序。
+![carbon.svg](https://cdn.nlark.com/yuque/0/2020/svg/554486/1587540410610-2bfd5a61-01e8-47e3-a2b6-8acaa15ad2b9.svg#align=left&display=inline&height=780&margin=%5Bobject%20Object%5D&name=carbon.svg&originHeight=780&originWidth=770&size=873029&status=done&style=none&width=770)
+对源程序进行编译，然后用W32Dasm进行反汇编，结果如下。
+![carbon (1).svg](https://cdn.nlark.com/yuque/0/2020/svg/554486/1587540787354-e247d29c-13ea-468f-8c6c-70b7119d641c.svg#align=left&display=inline&height=632&margin=%5Bobject%20Object%5D&name=carbon%20%281%29.svg&originHeight=632&originWidth=1188&size=706005&status=done&style=none&width=1188)
+Linear Sweep式反汇编软件是逐行反汇编的，代码中的垃圾数据“0E8h”干扰了其工作，因此错误地确定了指令的起始位置，导致反汇编的一些跳转指令所跳转的位置无效。就像这里的地址00401009h不再是一条指令的起始地址，而是在指令的内部。所以，如果在反汇编一个程序时发现这样的特征，就可以断定该程序中使用了花指令。
+OD在打开文件时使用线性扫描算法，在分析代码功能（“Ctrl+A”组合键）时使用递归行进算法。用OD代开实例并进行分析，生成的反汇编代码完全正确，“0E8h”字节没有被反汇编，也就是说，此类花指令无法迷惑OD，代码如下：
+![carbon (3).svg](https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542119661-a3dcd653-bf3c-44d6-8f9d-ea691ce60262.svg#align=left&display=inline&height=706&margin=%5Bobject%20Object%5D&name=carbon%20%283%29.svg&originHeight=706&originWidth=1160&size=879966&status=done&style=none&width=1160)
+在递归行进算法中，一个十分重要的假设是：对任意一条控制转移指令，都能确定其后继（即转移）的目的地址。想要迷惑这类反汇编工具，只要让其难以确定跳转的目的地址即可。
+创建一个指向性无效数据的跳转指令的代码，具体如下。
+![carbon (5).svg](https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542632626-28a9abfc-1926-41bc-9254-db2263dad492.svg#align=left&display=inline&height=816&margin=%5Bobject%20Object%5D&name=carbon%20%285%29.svg&originHeight=816&originWidth=980&size=763842&status=done&style=none&width=980)
+使用OD打开编译好的实例，这次汇编代码的识别出错了。OD认为垃圾数据“0E8h”所在的地址00401008h是有效的，故将其作为指令的起始地址，导致后面的指令识别出现了错误，具体如下。
+![carbon (4).svg](https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542349257-a7f7fe66-ed49-4c58-aa5a-25adf659f37c.svg#align=left&display=inline&height=632&margin=%5Bobject%20Object%5D&name=carbon%20%284%29.svg&originHeight=632&originWidth=1328&size=788319&status=done&style=none&width=1328)
+“无用的字节”干扰了反汇编工具对指令的起始位置的判断，从而导致反汇编的结果错误。如果能让反汇编工具正确地识别指令的起始地址，就能达到去除花指令的目的。例如，可以把那些无用的字节都替换成单字节指令。最常见的一种替换方法是把无用字节替换成nop指令，即十六进制数90h，示例如下。
+![carbon (6).svg](https://cdn.nlark.com/yuque/0/2020/svg/554486/1587543348682-c29b7bf2-df93-40b8-a7ef-c80768552a9c.svg#align=left&display=inline&height=706&margin=%5Bobject%20Object%5D&name=carbon%20%286%29.svg&originHeight=706&originWidth=1144&size=884727&status=done&style=none&width=1144)
+OD的一个花指令去除插件就是利用这个原理来去除花指令的。它根据收集的花指令特征码，将垃圾数据替换为nop指令，从而使反汇编工具正常工作。
+## 一些简单花指令的解析
+### 第一种花指令：
+特征：先有一个push 操作，然后jmp到一个Call，Call后面跟一个POP
+**56 EB 27** 2B A6 F1 CC 7E 25 31 96 23 39 7D B0 18 5A 1B D7 5E CB **5E FF E6** 2B A6 F1 CC 7E 25 31 96 23 39 7D B0 18 5A 1B D7 5E CB **E8 E6 FF FF FF 5E **
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1587543590826-e7feca42-9d2b-43c6-a8e3-cd94a4bbebb0.png#align=left&display=inline&height=381&margin=%5Bobject%20Object%5D&originHeight=381&originWidth=836&size=0&status=done&style=none&width=836)
+原理：        
+        push D(寄存器)   1.先push esi(使用一个参数，保留环境,这里也可以push eax-edi等寄存器)
+        jmp C(偏移)         2.通过EB xx的jmp偏移指令，跳转至精心构造的偏移xx处，也就是Call
+        call B()                 3.特定E8的Call指令回退调用(Call => 1.push 下一条指令的地址A        2.jmp 函数地址B)
+        pop D,jmp D        4.此时pop esi 就把地址A从堆栈中push出来，然后jmp esi就跳转至地址A
+        pop D                  5.再次pop esi 的目的在于还原环境
+解决方案：单步跟踪时，只需要F8即可过掉。(想在[IDA](https://www.52pojie.cn/thread-675251-1-1.html)内看结构，就把它们全部NOP掉就好了)
+变通点：B C D都可以变换，导致特征码不好定位，暂时没想到好的批处理方法
+### 第二种花指令：
+特征：
+        无效指令：如CLC,CLD,FNOP。
+        无效跳转：
+                mov 寄存器,A;
+                cmp 寄存器,A;
+                JNZ 迷惑跳转;
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1587543644917-89291898-66b9-4b40-ae97-75d776c1659f.png#align=left&display=inline&height=396&margin=%5Bobject%20Object%5D&originHeight=396&originWidth=727&size=0&status=done&style=none&width=727)
+解决方案：这种比较简单，迷惑跳转不用管，直接nop填充即可，调试跟踪的时候也可以当当乐子
+### 第三种花指令：
+特征：
+        push ss
+        pop ss
+        待执行指令
+        有效OPCODE 16 17
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1587543683615-df2e0ecb-3c52-4950-99dc-d3f5e96d3064.png#align=left&display=inline&height=508&margin=%5Bobject%20Object%5D&originHeight=508&originWidth=1083&size=0&status=done&style=none&width=1083)
+push ss;向堆栈压入16字节内容
+
 <p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543701189-9710a5ab-78d3-4448-9373-a4eeea890af4.png#align=left&display=inline&height=480&margin=%5Bobject%20Object%5D&originHeight=480&originWidth=1139&size=0&status=done&style=none&width=1139"><br>pop ss;</p>
 <p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543715584-ce072e8f-6cbc-4e03-9d77-18036800cc8c.png#align=left&display=inline&height=404&margin=%5Bobject%20Object%5D&originHeight=404&originWidth=1053&size=0&status=done&style=none&width=1053"><br>原理：在执行push ss,pop ss语句后，会自动执行下一条语句，当下一条为jmp或着Call是就会跑飞/关键功能丢失</p>
 <p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543743755-735bb3a7-ef1b-4866-8215-9177c609b0b5.png#align=left&display=inline&height=509&margin=%5Bobject%20Object%5D&originHeight=509&originWidth=745&size=0&status=done&style=none&width=745"><br>解决方案：如果pop ss后面跟的是Call，在Call入口下断即可。如图：</p>

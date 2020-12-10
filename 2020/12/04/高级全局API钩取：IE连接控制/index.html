@@ -70,7 +70,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> Word count:</span>
-            <span class="post-count">706</span>
+            <span class="post-count">1k</span>
         </span>
     </span>
 
@@ -79,26 +79,45 @@
         <span class="post-meta-item-icon">
             <i class="ri-book-open-line"></i>
             <span class="post-meta-item-text"> Reading time≈</span>
-            <span class="post-count">2 min</span>
+            <span class="post-count">4 min</span>
         </span>
     </span>
 </div>
  
     </div>
       
-    <div class="tocbot"></div>
-
 
 
 
   
     <div class="article-entry" itemprop="articleBody">
        
-  <p>我们将钩取IE使其试图连接到指定网站时转到连接到我的博客。<br>练习目标是钩取IE进程的API，在它连接到特定网站的过程中，将其连接到其他网站。无论是在IE地址栏中直接输入地址还是点击某个链接，IE都无法连接到被阻止的网站（将其当做拦截恶意网页功能较为容易理解）。</p>
-<h2 id="目标API"><a href="#目标API" class="headerlink" title="目标API"></a>目标API</h2><p>开始前先大致“猜测”一下，只要钩取套接字库（ws2_32.dll）或微软提供的网络访问相关库（wininet.dll、winhttp.dll）就可以了（钩取后者更容易）。<br>下面运行IE进行分析。首先使用Process Explorer查看IE加载了哪些DLL。从图中可知，IE不仅加载了ws2_32.dll，还加载了wininet.dll库。Wininet.dll提供的API，顾名思义，该API用来连接某个网站。<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1586170726011-d4e56ce6-bd79-4e65-afbf-e1cb92e0ad3e.png#align=left&display=inline&height=408&name=BZFEEDWX%7D6NVQV%7B%7B%28N9Q~85.png&originHeight=408&originWidth=452&size=188775&status=done&style=none&width=452"><br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1586170755105-603b82ff-a824-4d71-8a29-20ed1033d108.png#align=left&display=inline&height=177&name=HV3XESW%29TZ7Z%29Q~M4%5DL9TQR.png&originHeight=177&originWidth=738&size=107412&status=done&style=none&width=738"><br>接下来验证Wininet.InternetConnect() API是否就是要钩取的API。</p>
-<h2 id="IE进程结构"><a href="#IE进程结构" class="headerlink" title="IE进程结构"></a>IE进程结构</h2><p>运行IE浏览器，打开多个选项卡（tab），分别连接到不同网站。<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1586247496983-b9851d88-8ae8-4e06-ae4b-58da339ffc0b.png#align=left&display=inline&height=197&name=%25A%29RI%29%247B9HD%60NS~R2P%253Y0.png&originHeight=197&originWidth=406&size=46098&status=done&style=none&width=406"><br>使用Process Explorer查看IE进程结构。<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1586247559807-3170cc73-27bc-4c55-a685-17f948aedce8.png#align=left&display=inline&height=318&name=S%5DL71%60CNA%5BX%286YWYMUWWSIL.png&originHeight=318&originWidth=401&size=117906&status=done&style=none&width=401"><br>从图中可知，IE中有7个选项卡，共有5个IE进程（iexplore.exe）在运行。并且PID为3784的ieplore.exe进程与其他iexplore.exe进程形成了父子关系。从IE进程结构来看，IE应用程序为父进程（PID：3784），它管理着各选项卡对应的子进程。<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1586248457946-8d2a2735-0827-43bf-9132-d9c712703b70.png#align=left&display=inline&height=118&name=1%28B%29Q_VJ6V%7DSUTP0M10Y_QM.png&originHeight=118&originWidth=677&size=50205&status=done&style=none&width=677"><br>像这样，IE应用程序中每个选项卡对应的子iexplore.exe进程实际负载网络连接，创建选项卡进程时，（相关进程的）API就会被执行钩取操作，即采用全局API钩取技术钩取。否则，在新选项卡中连接网站时将无法钩取。本章采用一种更加安全方便的全局API钩取方法，钩取ntdll!ZwResumeThread() API，创建进程之后，主线程被Resume（恢复运行）时，可以钩取目标API。</p>
-<h2 id="关于全局API钩取的概念"><a href="#关于全局API钩取的概念" class="headerlink" title="关于全局API钩取的概念"></a>关于全局API钩取的概念</h2><h3 id="常规API钩取"><a href="#常规API钩取" class="headerlink" title="常规API钩取"></a>常规API钩取</h3><p>使用常规API钩取方法时，每当（要钩取的）目标进程被创建时，都要钩取指定API。图中描述了通过DLL注入技术实施常规API钩取操作的情形。<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1586249535224-05367030-8e13-4a27-ba61-4880632f428a.png#align=left&display=inline&height=282&name=%28R2%252%5DOG30ZE~E89I%7BR%7D~%291.png&originHeight=282&originWidth=426&size=56250&status=done&style=none&width=426"><br>图中要钩取的目标进程为Test.exe（PID：2492）。使用InjDll.exe程序将Hook.dll注入Test.exe进程，然后钩取指定API。若后面生成了另外一个Test.exe进程（PID：37%），则必须先向它注入Hook.dll后才能实现正常的API钩取操作。也就是说，每当要钩取的目标进程生成时都要手动钩取API。                                                                    </p>
-<h3 id="全局API钩取"><a href="#全局API钩取" class="headerlink" title="全局API钩取"></a>全局API钩取</h3><p>全局API钩取操作的过程。<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1586251389580-f62f34d8-a00c-4865-8ba7-76c732d5896a.png#align=left&display=inline&height=320&name=%40%7D%5BW%24GW%5D%60MOGBMIU4_LGURQ.png&originHeight=320&originWidth=385&size=57436&status=done&style=none&width=385"><br>InjDll.exe负责将gHook.dll注入Explorer.exe进程（Windows操作系统的基本shell）。注意，要钩取的进程不是Test.exe，而是启动运行Test.exe的Explorer.exe进程</p>
+  <meta name="referrer" content="no-referrer" />
+我们将钩取IE使其试图连接到指定网站时转到连接到我的博客。
+练习目标是钩取IE进程的API，在它连接到特定网站的过程中，将其连接到其他网站。无论是在IE地址栏中直接输入地址还是点击某个链接，IE都无法连接到被阻止的网站（将其当做拦截恶意网页功能较为容易理解）。
+## 目标API
+开始前先大致“猜测”一下，只要钩取套接字库（ws2_32.dll）或微软提供的网络访问相关库（wininet.dll、winhttp.dll）就可以了（钩取后者更容易）。
+下面运行IE进行分析。首先使用Process Explorer查看IE加载了哪些DLL。从图中可知，IE不仅加载了ws2_32.dll，还加载了wininet.dll库。Wininet.dll提供的API，顾名思义，该API用来连接某个网站。
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1586170726011-d4e56ce6-bd79-4e65-afbf-e1cb92e0ad3e.png#align=left&display=inline&height=408&name=BZFEEDWX%7D6NVQV%7B%7B%28N9Q~85.png&originHeight=408&originWidth=452&size=188775&status=done&style=none&width=452)
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1586170755105-603b82ff-a824-4d71-8a29-20ed1033d108.png#align=left&display=inline&height=177&name=HV3XESW%29TZ7Z%29Q~M4%5DL9TQR.png&originHeight=177&originWidth=738&size=107412&status=done&style=none&width=738)
+接下来验证Wininet.InternetConnect() API是否就是要钩取的API。
+## IE进程结构
+运行IE浏览器，打开多个选项卡（tab），分别连接到不同网站。
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1586247496983-b9851d88-8ae8-4e06-ae4b-58da339ffc0b.png#align=left&display=inline&height=197&name=%25A%29RI%29%247B9HD%60NS~R2P%253Y0.png&originHeight=197&originWidth=406&size=46098&status=done&style=none&width=406)
+使用Process Explorer查看IE进程结构。
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1586247559807-3170cc73-27bc-4c55-a685-17f948aedce8.png#align=left&display=inline&height=318&name=S%5DL71%60CNA%5BX%286YWYMUWWSIL.png&originHeight=318&originWidth=401&size=117906&status=done&style=none&width=401)
+从图中可知，IE中有7个选项卡，共有5个IE进程（iexplore.exe）在运行。并且PID为3784的ieplore.exe进程与其他iexplore.exe进程形成了父子关系。从IE进程结构来看，IE应用程序为父进程（PID：3784），它管理着各选项卡对应的子进程。
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1586248457946-8d2a2735-0827-43bf-9132-d9c712703b70.png#align=left&display=inline&height=118&name=1%28B%29Q_VJ6V%7DSUTP0M10Y_QM.png&originHeight=118&originWidth=677&size=50205&status=done&style=none&width=677)
+像这样，IE应用程序中每个选项卡对应的子iexplore.exe进程实际负载网络连接，创建选项卡进程时，（相关进程的）API就会被执行钩取操作，即采用全局API钩取技术钩取。否则，在新选项卡中连接网站时将无法钩取。本章采用一种更加安全方便的全局API钩取方法，钩取ntdll!ZwResumeThread() API，创建进程之后，主线程被Resume（恢复运行）时，可以钩取目标API。
+## 关于全局API钩取的概念
+### 常规API钩取
+使用常规API钩取方法时，每当（要钩取的）目标进程被创建时，都要钩取指定API。图中描述了通过DLL注入技术实施常规API钩取操作的情形。
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1586249535224-05367030-8e13-4a27-ba61-4880632f428a.png#align=left&display=inline&height=282&name=%28R2%252%5DOG30ZE~E89I%7BR%7D~%291.png&originHeight=282&originWidth=426&size=56250&status=done&style=none&width=426)
+图中要钩取的目标进程为Test.exe（PID：2492）。使用InjDll.exe程序将Hook.dll注入Test.exe进程，然后钩取指定API。若后面生成了另外一个Test.exe进程（PID：37%），则必须先向它注入Hook.dll后才能实现正常的API钩取操作。也就是说，每当要钩取的目标进程生成时都要手动钩取API。                                                                    
+### 全局API钩取
+全局API钩取操作的过程。
+![](https://cdn.nlark.com/yuque/0/2020/png/554486/1586251389580-f62f34d8-a00c-4865-8ba7-76c732d5896a.png#align=left&display=inline&height=320&name=%40%7D%5BW%24GW%5D%60MOGBMIU4_LGURQ.png&originHeight=320&originWidth=385&size=57436&status=done&style=none&width=385)
+InjDll.exe负责将gHook.dll注入Explorer.exe进程（Windows操作系统的基本shell）。注意，要钩取的进程不是Test.exe，而是启动运行Test.exe的Explorer.exe进程
  
       <!-- reward -->
       
