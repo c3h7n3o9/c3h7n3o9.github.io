@@ -9,7 +9,7 @@
     
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
   <title>
-    花指令 |  Rainbowseal的博客
+    驱动开发（一） |  Rainbowseal的博客
   </title>
   <meta name="generator" content="hexo-theme-ayer">
   
@@ -44,7 +44,7 @@
     <main class="content on">
       <section class="outer">
   <article
-  id="post-花指令"
+  id="post-驱动开发（一）"
   class="article article-type-post"
   itemscope
   itemprop="blogPost"
@@ -55,14 +55,14 @@
     <header class="article-header">
        
 <h1 class="article-title sea-center" style="border-left:0" itemprop="name">
-  花指令
+  驱动开发（一）
 </h1>
  
 
     </header>
      
     <div class="article-meta">
-      <a href="/2020/12/04/%E8%8A%B1%E6%8C%87%E4%BB%A4/" class="article-date">
+      <a href="/2020/12/04/%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89/" class="article-date">
   <time datetime="2020-12-04T10:36:39.000Z" itemprop="datePublished">2020-12-04</time>
 </a>   
 <div class="word_count">
@@ -70,7 +70,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-quill-pen-line"></i>
             <span class="post-meta-item-text"> Word count:</span>
-            <span class="post-count">1.9k</span>
+            <span class="post-count">88</span>
         </span>
     </span>
 
@@ -79,7 +79,7 @@
         <span class="post-meta-item-icon">
             <i class="ri-book-open-line"></i>
             <span class="post-meta-item-text"> Reading time≈</span>
-            <span class="post-count">7 min</span>
+            <span class="post-count">1 min</span>
         </span>
     </span>
 </div>
@@ -94,23 +94,7 @@
   
     <div class="article-entry" itemprop="articleBody">
        
-  <meta name="referrer" content="no-referrer" />
-
-<h2 id="什么是花指令"><a href="#什么是花指令" class="headerlink" title="什么是花指令"></a>什么是花指令</h2><p>反汇编过程中存在几个关键问题，其中之一是数据与代码的区分问题。反汇编算法必须对汇编指令长度，多种多样的间接跳转实现形式进行适当处理，从而保证反汇编结果的正确性。机器的一般格式为：指令＋数据。而反汇编的大致过程是：首先会确定指令開始的首地址，然后依据这个指令字推断是哪个汇编语句，然后再将后面的数据反汇编出来。由此，我们能够看到，在这一步的反汇编过程中存在漏洞：如果有人有益将错误的机器指令放在了错误的位置，那反汇编时，就有可能连同后面的数据一起错误地反汇编出来，这样，我们看到的就可能是一个错误的反汇编代码。<br>巧妙构造代码和数据，在指令流中插入很多“数据垃圾”，干扰反汇编软件的判断，使其错误地确定指令的起始位置，让破解者无法清楚正确地反汇编程序的内容，迷失方向。经典的是，目标位置是另一条指令的中间，这样在反汇编的时候便会出现混乱。这就是“花指令”，简而言之，花指令是利用了反汇编时单纯依据机器指令字来决定反汇编结果的漏洞。<br>以下为一段汇编源程序。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587540410610-2bfd5a61-01e8-47e3-a2b6-8acaa15ad2b9.svg#align=left&display=inline&height=780&margin=%5Bobject%20Object%5D&name=carbon.svg&originHeight=780&originWidth=770&size=873029&status=done&style=none&width=770" alt="carbon.svg"><br>对源程序进行编译，然后用W32Dasm进行反汇编，结果如下。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587540787354-e247d29c-13ea-468f-8c6c-70b7119d641c.svg#align=left&display=inline&height=632&margin=%5Bobject%20Object%5D&name=carbon%20%281%29.svg&originHeight=632&originWidth=1188&size=706005&status=done&style=none&width=1188" alt="carbon (1).svg"><br>Linear Sweep式反汇编软件是逐行反汇编的，代码中的垃圾数据“0E8h”干扰了其工作，因此错误地确定了指令的起始位置，导致反汇编的一些跳转指令所跳转的位置无效。就像这里的地址00401009h不再是一条指令的起始地址，而是在指令的内部。所以，如果在反汇编一个程序时发现这样的特征，就可以断定该程序中使用了花指令。<br>OD在打开文件时使用线性扫描算法，在分析代码功能（“Ctrl+A”组合键）时使用递归行进算法。用OD代开实例并进行分析，生成的反汇编代码完全正确，“0E8h”字节没有被反汇编，也就是说，此类花指令无法迷惑OD，代码如下：<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542119661-a3dcd653-bf3c-44d6-8f9d-ea691ce60262.svg#align=left&display=inline&height=706&margin=%5Bobject%20Object%5D&name=carbon%20%283%29.svg&originHeight=706&originWidth=1160&size=879966&status=done&style=none&width=1160" alt="carbon (3).svg"><br>在递归行进算法中，一个十分重要的假设是：对任意一条控制转移指令，都能确定其后继（即转移）的目的地址。想要迷惑这类反汇编工具，只要让其难以确定跳转的目的地址即可。<br>创建一个指向性无效数据的跳转指令的代码，具体如下。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542632626-28a9abfc-1926-41bc-9254-db2263dad492.svg#align=left&display=inline&height=816&margin=%5Bobject%20Object%5D&name=carbon%20%285%29.svg&originHeight=816&originWidth=980&size=763842&status=done&style=none&width=980" alt="carbon (5).svg"><br>使用OD打开编译好的实例，这次汇编代码的识别出错了。OD认为垃圾数据“0E8h”所在的地址00401008h是有效的，故将其作为指令的起始地址，导致后面的指令识别出现了错误，具体如下。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587542349257-a7f7fe66-ed49-4c58-aa5a-25adf659f37c.svg#align=left&display=inline&height=632&margin=%5Bobject%20Object%5D&name=carbon%20%284%29.svg&originHeight=632&originWidth=1328&size=788319&status=done&style=none&width=1328" alt="carbon (4).svg"><br>“无用的字节”干扰了反汇编工具对指令的起始位置的判断，从而导致反汇编的结果错误。如果能让反汇编工具正确地识别指令的起始地址，就能达到去除花指令的目的。例如，可以把那些无用的字节都替换成单字节指令。最常见的一种替换方法是把无用字节替换成nop指令，即十六进制数90h，示例如下。<br><img src="https://cdn.nlark.com/yuque/0/2020/svg/554486/1587543348682-c29b7bf2-df93-40b8-a7ef-c80768552a9c.svg#align=left&display=inline&height=706&margin=%5Bobject%20Object%5D&name=carbon%20%286%29.svg&originHeight=706&originWidth=1144&size=884727&status=done&style=none&width=1144" alt="1.png"><br>OD的一个花指令去除插件就是利用这个原理来去除花指令的。它根据收集的花指令特征码，将垃圾数据替换为nop指令，从而使反汇编工具正常工作。</p>
-<h2 id="一些简单花指令的解析"><a href="#一些简单花指令的解析" class="headerlink" title="一些简单花指令的解析"></a>一些简单花指令的解析</h2><h3 id="第一种花指令："><a href="#第一种花指令：" class="headerlink" title="第一种花指令："></a>第一种花指令：</h3><p>特征：先有一个push 操作，然后jmp到一个Call，Call后面跟一个POP<br><strong>56 EB 27</strong> 2B A6 F1 CC 7E 25 31 96 23 39 7D B0 18 5A 1B D7 5E CB <strong>5E FF E6</strong> 2B A6 F1 CC 7E 25 31 96 23 39 7D B0 18 5A 1B D7 5E CB **E8 E6 FF FF FF 5E **<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543590826-e7feca42-9d2b-43c6-a8e3-cd94a4bbebb0.png#align=left&display=inline&height=381&margin=%5Bobject%20Object%5D&originHeight=381&originWidth=836&size=0&status=done&style=none&width=836" alt="1.png"><br>原理：          <br>        push D(寄存器)   1.先push esi(使用一个参数，保留环境,这里也可以push eax-edi等寄存器)<br>        jmp C(偏移)         2.通过EB xx的jmp偏移指令，跳转至精心构造的偏移xx处，也就是Call<br>        call B()                 3.特定E8的Call指令回退调用(Call =&gt; 1.push 下一条指令的地址A        2.jmp 函数地址B)<br>        pop D,jmp D        4.此时pop esi 就把地址A从堆栈中push出来，然后jmp esi就跳转至地址A<br>        pop D                  5.再次pop esi 的目的在于还原环境<br>解决方案：单步跟踪时，只需要F8即可过掉。(想在<a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-675251-1-1.html">IDA</a>内看结构，就把它们全部NOP掉就好了)<br>变通点：B C D都可以变换，导致特征码不好定位，暂时没想到好的批处理方法</p>
-<h3 id="第二种花指令："><a href="#第二种花指令：" class="headerlink" title="第二种花指令："></a>第二种花指令：</h3><p>特征：<br>        无效指令：如CLC,CLD,FNOP。<br>        无效跳转：<br>                mov 寄存器,A;<br>                cmp 寄存器,A;<br>                JNZ 迷惑跳转;<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543644917-89291898-66b9-4b40-ae97-75d776c1659f.png#align=left&display=inline&height=396&margin=%5Bobject%20Object%5D&originHeight=396&originWidth=727&size=0&status=done&style=none&width=727" alt="1.png"><br>解决方案：这种比较简单，迷惑跳转不用管，直接nop填充即可，调试跟踪的时候也可以当当乐子</p>
-<h3 id="第三种花指令："><a href="#第三种花指令：" class="headerlink" title="第三种花指令："></a>第三种花指令：</h3><p>特征：<br>        push ss<br>        pop ss<br>        待执行指令<br>        有效OPCODE 16 17<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543683615-df2e0ecb-3c52-4950-99dc-d3f5e96d3064.png#align=left&display=inline&height=508&margin=%5Bobject%20Object%5D&originHeight=508&originWidth=1083&size=0&status=done&style=none&width=1083" alt="1.png"><br>push ss;向堆栈压入16字节内容</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543701189-9710a5ab-78d3-4448-9373-a4eeea890af4.png#align=left&display=inline&height=480&margin=%5Bobject%20Object%5D&originHeight=480&originWidth=1139&size=0&status=done&style=none&width=1139"><br>pop ss;</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543715584-ce072e8f-6cbc-4e03-9d77-18036800cc8c.png#align=left&display=inline&height=404&margin=%5Bobject%20Object%5D&originHeight=404&originWidth=1053&size=0&status=done&style=none&width=1053" alt="1.png"><br>原理：在执行push ss,pop ss语句后，会自动执行下一条语句，当下一条为jmp或着Call是就会跑飞/关键功能丢失</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543743755-735bb3a7-ef1b-4866-8215-9177c609b0b5.png#align=left&display=inline&height=509&margin=%5Bobject%20Object%5D&originHeight=509&originWidth=745&size=0&status=done&style=none&width=745" alt="1.png"><br>解决方案：如果pop ss后面跟的是Call，在Call入口下断即可。如图：</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543764740-2642c776-dcac-4118-85be-e2c94e459482.png#align=left&display=inline&height=370&margin=%5Bobject%20Object%5D&originHeight=370&originWidth=1026&size=0&status=done&style=none&width=1026" alt="1.png"></p>
-<h3 id="第四种花指令-来源于GrandCrab5-3的一个样本-："><a href="#第四种花指令-来源于GrandCrab5-3的一个样本-：" class="headerlink" title="第四种花指令(来源于GrandCrab5.3的一个样本)："></a>第四种花指令(来源于GrandCrab5.3的一个样本)：</h3><p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543779680-2cd8f921-6572-44f2-8d23-3e6f5fb2cf7c.png#align=left&display=inline&height=302&margin=%5Bobject%20Object%5D&originHeight=302&originWidth=902&size=0&status=done&style=none&width=902" alt="1.png"><br>1.mov ecx,0x1C3D2（给ecx赋值）        有效OPCODE：B9</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543796214-62d3b85c-9dc2-404e-90a6-31cf82ae4d03.png#align=left&display=inline&height=532&margin=%5Bobject%20Object%5D&originHeight=532&originWidth=1056&size=0&status=done&style=none&width=1056" alt="1.png"><br>2.Call XXxx(将下一条语句作为返回地址push入栈，然后跳转至偏移)有效OPCODE：E8 0B 00 00 00(Call XXxx)</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543819459-56283fb3-6929-480a-aa6e-0b3c2fcaf1e2.png#align=left&display=inline&height=535&margin=%5Bobject%20Object%5D&originHeight=535&originWidth=1093&size=0&status=done&style=none&width=1093" alt="1.png"><br>3.add [esp],0x12; 修改返回地址        有效OPCODE：83 04 24 12</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543833789-5025934c-0a1b-44ab-9e0a-e162106fe650.png#align=left&display=inline&height=492&margin=%5Bobject%20Object%5D&originHeight=492&originWidth=1025&size=0&status=done&style=none&width=1025" alt="1.png"><br>4.loopd short 循环跳转 ，然后cmp ecx,XXXX(由于之前赋值的是较小数一定会跳转)最后retn返回至被修改过的函数返回地址，结束        有效OPCODE：E2 EF(loopd short) 81 F9 XXxx( cmp ecx,XX) 78 F0(JS short) C3(retn)</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543846313-6bcdbfc2-ca21-4e33-9926-2a6de82060b3.png#align=left&display=inline&height=482&margin=%5Bobject%20Object%5D&originHeight=482&originWidth=1049&size=0&status=done&style=none&width=1049" alt="1.png"><br>解决方案：<br>        利用010去花指令：花指令特征码为<strong>B9</strong> D2 <strong>C3</strong> 01 00 <strong>E8</strong> <strong>0B 00 00 00</strong> <strong>81 F9</strong> 58 FF FE 01 <strong>78 F0</strong> 79 F8 E9 <strong>83 04 24</strong> <strong>12</strong> <strong>E2 EF</strong> E8 替换为EB 1A，后面随便填充即可，如：EB 1A 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90 90<br>去花对比：<br><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543864098-eab0fcd1-7979-4923-9150-6f7d5f4a6ce5.png#align=left&display=inline&height=752&margin=%5Bobject%20Object%5D&originHeight=752&originWidth=1290&size=0&status=done&style=none&width=1290" alt="1.png"><br>去花后：</p>
-<p><img src="https://cdn.nlark.com/yuque/0/2020/png/554486/1587543884868-3220f587-0c59-4adf-b23f-8479626b6c6e.png#align=left&display=inline&height=407&margin=%5Bobject%20Object%5D&originHeight=407&originWidth=659&size=0&status=done&style=none&width=659" alt="1.png"><br>总结：<br>1.前三种花指令都是来自于最近看的一个VB样本的ShellCode内，没能太大阻碍分析过程。第四个来源于很早之前看的一个GrandCrab5.3勒索病毒，解决花指令能有效利用IDA对其快速分析，帮助还是挺大的（<strong>当OD分析花指令时候一定要灵活利用ctrl+↑和ctrl+↓手动矫正反编译结果</strong>）。<br>2.花指令就是一个消耗分析人员耐心的行为(主要考验分析人员的汇编功底)，分析的多了自然就熟练了(一般加花的话，像上面的有效OPCODE就很难变动)写下此贴目的之一就是告诫自己要耐心耐性<br>3.我们也可以通过上面的有效指令，构造属于我们的花指令(具体怎么操作就靠大家发散了)，然后添加到代码的任意位置，<strong>略微</strong>增大分析难度</p>
-<p>参考资料：<br>《加密与解密》<br><a target="_blank" rel="noopener" href="https://www.52pojie.cn/thread-1068444-1-1.html">https://www.52pojie.cn/thread-1068444-1-1.html</a><br><a target="_blank" rel="noopener" href="https://www.baidu.com/">https://www.baidu.com</a></p>
+  <h2 id="先吹Windows"><a href="#先吹Windows" class="headerlink" title="先吹Windows"></a>先吹Windows</h2><p>当Windows发展到Windows 2000时，已经比先前版本的Windows有了质的飞跃。Window 2000在设计上是十分先进的，微软公司随后推出的Windows XP和Windows 2003，其基本架构上都没有太大的变化。在Windows 2000设计之初，微软公司的架构师制定了如下的设计目标。</p>
  
       <!-- reward -->
       
@@ -175,12 +159,12 @@
     <a class="modal-close" href="javascript:;"><i class="ri-close-circle-line"></i></a>
     <p>扫一扫，分享到微信</p>
     <div class="wx-qrcode">
-      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=http://8.131.57.39/2020/12/04/%E8%8A%B1%E6%8C%87%E4%BB%A4/" alt="微信分享二维码">
+      <img src="//api.qrserver.com/v1/create-qr-code/?size=150x150&data=http://8.131.57.39/2020/12/04/%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89/" alt="微信分享二维码">
     </div>
 </div>
 
 <div id="share-mask"></div>  
-  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E9%80%86%E5%90%91/" rel="tag">逆向</a></li></ul>
+  <ul class="article-tag-list" itemprop="keywords"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/%E9%A9%B1%E5%8A%A8/" rel="tag">驱动</a></li></ul>
 
     </footer>
   </div>
@@ -188,20 +172,15 @@
    
   <nav class="article-nav">
     
-      <a href="/2020/12/04/vm/" class="article-nav-link">
+      <a href="/2020/12/04/%E8%8A%B1%E6%8C%87%E4%BB%A4/" class="article-nav-link">
         <strong class="article-nav-caption">上一篇</strong>
         <div class="article-nav-title">
           
-            vm
+            花指令
           
         </div>
       </a>
     
-    
-      <a href="/2020/12/04/%E9%A9%B1%E5%8A%A8%E5%BC%80%E5%8F%91%EF%BC%88%E4%B8%80%EF%BC%89/" class="article-nav-link">
-        <strong class="article-nav-caption">下一篇</strong>
-        <div class="article-nav-title">驱动开发（一）</div>
-      </a>
     
   </nav>
 
